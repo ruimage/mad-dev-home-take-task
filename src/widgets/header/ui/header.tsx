@@ -6,7 +6,7 @@ const linkClassName = "text-sm font-medium transition-colors hover:text-foregrou
 export function Header() {
   return (
     <header className="bg-background/95 supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50 w-full border-b backdrop-blur">
-      <div className="mx-auto flex h-14 w-full max-w-5xl items-center gap-6 px-4">
+      <div className="mx-auto flex h-14 w-full max-w-7xl items-center gap-4 px-4">
         <Link to="/" className="font-semibold tracking-tight">
           Переговорная
         </Link>
@@ -18,7 +18,10 @@ export function Header() {
             inactiveProps={{ className: "text-muted-foreground" }}
             className={linkClassName}
           >
-            Расписание
+            Управление
+          </Link>
+          <Link to="/display" className={linkClassName}>
+            Экран у двери
           </Link>
         </nav>
         <div className="ml-auto">

@@ -10,8 +10,9 @@ interface DayScheduleGridProps {
   selectedId: string | null;
   pendingId: string | null;
   canManage: boolean;
-  onEdit(id: string, trigger: HTMLButtonElement): void;
-  onDelete(id: string, trigger: HTMLButtonElement): void;
+  displayOnly?: boolean;
+  onEdit?(id: string, trigger: HTMLButtonElement): void;
+  onDelete?(id: string, trigger: HTMLButtonElement): void;
 }
 
 export function DayScheduleGrid({
@@ -20,6 +21,7 @@ export function DayScheduleGrid({
   selectedId,
   pendingId,
   canManage,
+  displayOnly = false,
   onEdit,
   onDelete,
 }: DayScheduleGridProps) {
@@ -64,7 +66,7 @@ export function DayScheduleGrid({
     .toMeetings()
     .map((meeting) => ({ meeting, layout: meetingGridLayout(meeting, schedule.data) }));
   return (
-    <div className="space-y-3">
+    <div className={displayOnly ? "flex h-full min-h-0 flex-col gap-3" : "space-y-3"}>
       {meetings.length === 0 && (
         <p className="rounded-lg bg-muted/40 px-3 py-2 text-sm text-muted-foreground">
           На этот день бронирований нет
@@ -75,7 +77,7 @@ export function DayScheduleGrid({
         role="region"
         aria-label="Временная сетка расписания"
         tabIndex={0}
-        className="max-h-[42rem] overflow-y-auto rounded-xl border bg-muted/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring"
+        className={`${displayOnly ? "min-h-0 flex-1" : "max-h-[42rem]"} overflow-y-auto rounded-xl border bg-muted/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring`}
       >
         <div style={{ paddingBlock: hasCurrentTime ? "var(--schedule-scroll-padding, 0px)" : 0 }}>
           <div data-testid="schedule-grid-canvas" className="relative my-4 ml-14 mr-3">
@@ -96,6 +98,7 @@ export function DayScheduleGrid({
                         selected={selectedId === meeting.id}
                         pending={pendingId === meeting.id}
                         canManage={canManage}
+                        displayOnly={displayOnly}
                         onEdit={onEdit}
                         onDelete={onDelete}
                       />

@@ -102,7 +102,7 @@ export function HomePage() {
     }
   }
   return (
-    <section className="mx-auto w-full max-w-5xl space-y-7 px-4 py-8 sm:py-12">
+    <section className="mx-auto w-full max-w-7xl space-y-7 px-4 py-8 sm:py-12">
       <header className="space-y-2">
         <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
           Одна комната · один рабочий день
@@ -114,30 +114,6 @@ export function HomePage() {
           Выберите день и свободное время. Рабочие часы: 09:00–18:00.
         </p>
       </header>
-      <div className="flex flex-wrap items-end justify-between gap-4 rounded-xl border bg-muted/30 p-4">
-        <div className="w-full space-y-2 sm:w-auto">
-          <label htmlFor="booking-date" className="text-sm font-medium">
-            Дата
-          </label>
-          <Input
-            className="sm:w-48"
-            id="booking-date"
-            type="date"
-            value={context.date}
-            disabled={busy}
-            onChange={(event) => send({ type: "schedule.date.selected", date: event.target.value })}
-          />
-        </div>
-        <p className="text-sm text-muted-foreground">
-          {validDate
-            ? new Intl.DateTimeFormat("ru-RU", {
-                weekday: "long",
-                day: "numeric",
-                month: "long",
-              }).format(new Date(`${context.date}T12:00:00`))
-            : "Выберите дату"}
-        </p>
-      </div>
       <div aria-live="polite" aria-atomic="true" className="text-sm">
         {snapshot.matches("loading") && <p role="status">Загрузка расписания…</p>}
         {snapshot.matches("saving") && <p role="status">Сохраняем изменение…</p>}
@@ -157,15 +133,17 @@ export function HomePage() {
           Повторить загрузку
         </Button>
       )}
-      {context.optimistic && (
-        <div className="grid items-start gap-6 md:grid-cols-[1.1fr_1fr]">
-          <div className="space-y-4">
+      <div className="grid items-start gap-6 md:grid-cols-[minmax(0,1fr)_22rem]">
+        <div className="space-y-4">
+          {context.optimistic && (
             <div className="flex items-baseline justify-between">
               <h2 ref={heading} tabIndex={-1} className="text-xl font-semibold">
                 Расписание дня
               </h2>
               <span className="text-sm text-muted-foreground">Встреч: {meetings.length}</span>
             </div>
+          )}
+          {context.optimistic && (
             <DayScheduleGrid
               schedule={context.optimistic}
               now={context.now}
@@ -187,10 +165,39 @@ export function HomePage() {
                 send({ type: "meeting.delete.requested", meetingId });
               }}
             />
-          </div>
-          <Card>
-            <CardContent className="pt-6">
-              {editing && editor ? (
+          )}
+        </div>
+        <Card>
+          <CardContent className="space-y-5 pt-6">
+            <div className="space-y-3 border-b pb-5">
+              <div className="space-y-2">
+                <label htmlFor="booking-date" className="text-sm font-medium">
+                  Дата
+                </label>
+                <Input
+                  className="w-full"
+                  id="booking-date"
+                  type="date"
+                  value={context.date}
+                  disabled={busy}
+                  onChange={(event) =>
+                    send({ type: "schedule.date.selected", date: event.target.value })
+                  }
+                />
+              </div>
+              <p className="text-sm text-muted-foreground">
+                {validDate
+                  ? new Intl.DateTimeFormat("ru-RU", {
+                      weekday: "long",
+                      day: "numeric",
+                      month: "long",
+                    }).format(new Date(`${context.date}T12:00:00`))
+                  : "Выберите дату"}
+              </p>
+            </div>
+
+            {context.optimistic &&
+              (editing && editor ? (
                 <MeetingEditorView
                   key={context.editorId}
                   actor={editor}
@@ -219,11 +226,10 @@ export function HomePage() {
                     onSubmit={submit}
                   />
                 </>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-      )}
+              ))}
+          </CardContent>
+        </Card>
+      </div>
       {snapshot.matches({ ready: "confirmingDelete" }) && (
         <DeleteConfirmation
           onCancel={() => send({ type: "meeting.delete.cancelled" })}

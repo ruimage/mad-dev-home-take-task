@@ -5,13 +5,22 @@ import {
   createRootRoute,
   createRoute,
   createRouter,
+  useRouterState,
   type ErrorComponentProps,
 } from "@tanstack/react-router";
 import { HomePage } from "@/pages/home";
+import { DisplayPage } from "@/pages/display";
 import { Button } from "@/shared/ui";
 import { Header } from "@/widgets/header";
 
 function RootLayout() {
+  const displayOnly = useRouterState({ select: (state) => state.location.pathname === "/display" });
+  if (displayOnly)
+    return (
+      <main data-display-mode className="h-dvh overflow-hidden">
+        <Outlet />
+      </main>
+    );
   return (
     <div className="flex min-h-screen flex-col">
       <Header />
@@ -59,11 +68,14 @@ const indexRoute = createRoute({
   component: HomePage,
 });
 
-// Add code-split routes like this:
-//   createRoute({ getParentRoute: () => rootRoute, path: "/about" })
-//     .lazy(() => import("@/pages/about/ui/about-page.lazy").then((d) => d.Route));
+const displayRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/display",
+  component: DisplayPage,
+});
+
 export const router = createRouter({
-  routeTree: rootRoute.addChildren([indexRoute]),
+  routeTree: rootRoute.addChildren([indexRoute, displayRoute]),
   defaultPreload: "intent",
 });
 

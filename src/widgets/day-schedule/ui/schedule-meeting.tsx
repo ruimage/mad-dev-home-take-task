@@ -10,8 +10,9 @@ export interface ScheduleMeetingProps {
   selected: boolean;
   pending: boolean;
   canManage: boolean;
-  onEdit(id: string, trigger: HTMLButtonElement): void;
-  onDelete(id: string, trigger: HTMLButtonElement): void;
+  displayOnly?: boolean;
+  onEdit?(id: string, trigger: HTMLButtonElement): void;
+  onDelete?(id: string, trigger: HTMLButtonElement): void;
 }
 
 /** Positioned relative to its minimum-slot row, not snapped to that row's start. */
@@ -22,6 +23,7 @@ export function ScheduleMeeting({
   selected,
   pending,
   canManage,
+  displayOnly = false,
   onEdit,
   onDelete,
 }: ScheduleMeetingProps) {
@@ -48,14 +50,14 @@ export function ScheduleMeeting({
         <h3 className="truncate text-xs" title={meeting.title || "Встреча без названия"}>
           {meeting.title || "Встреча без названия"}
         </h3>
-        {future && (
+        {future && !displayOnly && (
           <div className="mt-auto flex gap-1">
             <Button
               size="sm"
               variant="outline"
               className="h-6 px-2 text-xs"
               disabled={!canManage}
-              onClick={(event) => onEdit(meeting.id, event.currentTarget)}
+              onClick={(event) => onEdit?.(meeting.id, event.currentTarget)}
             >
               Изменить
             </Button>
@@ -64,7 +66,7 @@ export function ScheduleMeeting({
               variant="ghost"
               className="h-6 px-2 text-xs"
               disabled={!canManage}
-              onClick={(event) => onDelete(meeting.id, event.currentTarget)}
+              onClick={(event) => onDelete?.(meeting.id, event.currentTarget)}
             >
               Удалить
             </Button>
