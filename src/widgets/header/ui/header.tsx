@@ -8,7 +8,7 @@ export function Header() {
     <header className="bg-background/95 supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50 w-full border-b backdrop-blur">
       <div className="mx-auto flex h-14 w-full max-w-5xl items-center gap-6 px-4">
         <Link to="/" className="font-semibold tracking-tight">
-          bun-fsd-template
+          Переговорная
         </Link>
         <nav className="flex items-center gap-4">
           <Link
@@ -18,7 +18,7 @@ export function Header() {
             inactiveProps={{ className: "text-muted-foreground" }}
             className={linkClassName}
           >
-            Home
+            Расписание
           </Link>
         </nav>
         <div className="ml-auto">

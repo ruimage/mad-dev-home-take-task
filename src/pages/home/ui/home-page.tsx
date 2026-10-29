@@ -1,59 +1,299 @@
-import {
-  Button,
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-  Input,
-} from "@/shared/ui";
+import { useEffect, useRef, useState } from "react";
+import { useMachine } from "@xstate/react";
+import { SCHEDULE_SERVICE } from "@/entities/day-schedule";
+import { dateSchema, isFutureMeeting, meetingStatus } from "@/entities/meeting";
+import { MeetingEditorView, MeetingForm, errorMessage } from "@/features/meeting-editor";
+import { DEMO_API } from "@/shared/api";
+import { formatMinute, readClock } from "@/shared/lib/date-time";
+import { useService } from "@/shared/lib/di";
+import { inspectStateMachines } from "@/shared/lib/state-inspection";
+import { Button, Card, CardContent, Input } from "@/shared/ui";
+import { dayScheduleMachine } from "../model/schedule.machine";
 
-const stack = [
-  "Bun — runtime, bundler, test runner",
-  "Feature-Sliced Design — architecture",
-  "shadcn/ui + Tailwind CSS v4 — interface",
-  "Zod + @rzv/make-brand — validated branded types",
-  "DI service layer — external sources",
-  "Playwright — e2e & component tests",
-];
+function DeleteConfirmation({ onCancel, onConfirm }: { onCancel(): void; onConfirm(): void }) {
+  const dialog = useRef<HTMLDialogElement>(null);
+  const cancel = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    const element = dialog.current;
+    element?.showModal();
+    cancel.current?.focus();
+    return () => element?.close();
+  }, []);
+  return (
+    <dialog
+      ref={dialog}
+      aria-labelledby="delete-heading"
+      onCancel={(event) => {
+        event.preventDefault();
+        onCancel();
+      }}
+      className="m-auto w-[calc(100%-2rem)] max-w-sm rounded-xl border bg-background p-6 text-foreground shadow-xl backdrop:bg-black/40"
+    >
+      <h2 id="delete-heading" className="text-lg font-semibold">
+        Удалить встречу?
+      </h2>
+      <p className="my-4 text-sm text-muted-foreground">
+        После подтверждения время освободится для других встреч.
+      </p>
+      <div className="flex gap-2">
+        <Button ref={cancel} variant="outline" onClick={onCancel}>
+          Отмена
+        </Button>
+        <Button variant="destructive" onClick={onConfirm}>
+          Удалить встречу
+        </Button>
+      </div>
+    </dialog>
+  );
+}
 
 export function HomePage() {
+  const service = useService(SCHEDULE_SERVICE);
+  const demo = useService(DEMO_API);
+  const [snapshot, send] = useMachine(dayScheduleMachine, {
+    input: { service, now: readClock() },
+    inspect: process.env.NODE_ENV === "development" ? inspectStateMachines : undefined,
+  });
+  const context = snapshot.context;
+  const editor = snapshot.children.meetingEditor;
+  const busy = snapshot.matches("saving") || snapshot.matches("refreshing");
+  const ready = snapshot.matches("ready");
+  const editing = context.editorId !== null;
+  const creating = snapshot.matches({ ready: "creating" });
+  const validDate = dateSchema.safeParse(context.date).success;
+  const meetings = context.optimistic?.toMeetings() ?? [];
+  const pastDate = context.date < context.now.date;
+  const dayFinished = context.date === context.now.date && context.now.minute >= 1050;
+  const [demoMessage, setDemoMessage] = useState("");
+  const [armingDemo, setArmingDemo] = useState(false);
+  const heading = useRef<HTMLHeadingElement>(null);
+  const restoreFocus = useRef<HTMLElement | null>(null);
+  const wasBusy = useRef(false);
+  useEffect(() => {
+    const update = () => send({ type: "clock.changed", now: readClock() });
+    const timer = window.setInterval(update, 30_000);
+    window.addEventListener("focus", update);
+    return () => {
+      window.clearInterval(timer);
+      window.removeEventListener("focus", update);
+    };
+  }, [send]);
+  useEffect(() => {
+    if (wasBusy.current && !busy) {
+      if (restoreFocus.current?.isConnected) restoreFocus.current.focus();
+      else heading.current?.focus();
+    }
+    wasBusy.current = busy;
+  }, [busy]);
+  function submit() {
+    send({ type: "clock.changed", now: readClock() });
+    send({ type: "meeting.save.requested" });
+  }
+  async function armConflict() {
+    setArmingDemo(true);
+    try {
+      await demo.armConflict();
+      setDemoMessage("Конфликт подготовлен: следующее создание свободного интервала вернёт 409.");
+    } catch (error) {
+      setDemoMessage(errorMessage(error));
+    } finally {
+      setArmingDemo(false);
+    }
+  }
   return (
-    <section className="mx-auto grid w-full max-w-5xl items-start gap-6 px-4 py-10 md:grid-cols-2">
-      <Card>
-        <CardHeader>
-          <h1 className="text-3xl leading-none font-semibold tracking-tight">Bun + FSD Template</h1>
-          <CardDescription>
-            Frontend template on pure Bun: dev server, bundler and unit tests without extra tooling.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <ul className="flex flex-col gap-1 text-sm text-muted-foreground">
-            {stack.map((item) => (
-              <li key={item}>{item}</li>
-            ))}
-          </ul>
-        </CardContent>
-      </Card>
-
-      {/* Classic shadcn/ui example card (docs "Cards" demo). */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Create project</CardTitle>
-          <CardDescription>Deploy your new project in one-click.</CardDescription>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-2">
-          <Input placeholder="Name of your project" />
-          <Input type="email" placeholder="Email" />
-        </CardContent>
-        <CardFooter className="gap-2">
-          <Button variant="outline" type="button">
-            Cancel
-          </Button>
-          <Button type="button">Deploy</Button>
-        </CardFooter>
-      </Card>
+    <section className="mx-auto w-full max-w-5xl space-y-7 px-4 py-8 sm:py-12">
+      <header className="space-y-2">
+        <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
+          Одна комната · один рабочий день
+        </p>
+        <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">
+          Бронирование переговорной
+        </h1>
+        <p className="text-sm text-muted-foreground">
+          Выберите день и свободное время. Рабочие часы: 09:00–18:00.
+        </p>
+      </header>
+      <div className="flex flex-wrap items-end justify-between gap-4 rounded-xl border bg-muted/30 p-4">
+        <div className="w-full space-y-2 sm:w-auto">
+          <label htmlFor="booking-date" className="text-sm font-medium">
+            Дата
+          </label>
+          <Input
+            className="sm:w-48"
+            id="booking-date"
+            type="date"
+            value={context.date}
+            disabled={busy}
+            onChange={(event) => send({ type: "schedule.date.selected", date: event.target.value })}
+          />
+        </div>
+        <p className="text-sm text-muted-foreground">
+          {validDate
+            ? new Intl.DateTimeFormat("ru-RU", {
+                weekday: "long",
+                day: "numeric",
+                month: "long",
+              }).format(new Date(`${context.date}T12:00:00`))
+            : "Выберите дату"}
+        </p>
+      </div>
+      <div aria-live="polite" aria-atomic="true" className="text-sm">
+        {snapshot.matches("loading") && <p role="status">Загрузка расписания…</p>}
+        {snapshot.matches("saving") && <p role="status">Сохраняем изменение…</p>}
+        {snapshot.matches("refreshing") && <p role="status">Обновляем расписание…</p>}
+        {ready && context.notice && <p>{context.notice}</p>}
+      </div>
+      {context.loadError && (
+        <div
+          role="alert"
+          className="rounded-lg border border-destructive/30 p-4 text-sm text-destructive"
+        >
+          {context.loadError}
+        </div>
+      )}
+      {(snapshot.matches("loadFailed") || snapshot.matches("refreshFailed")) && (
+        <Button variant="outline" onClick={() => send({ type: "schedule.load.retry" })}>
+          Повторить загрузку
+        </Button>
+      )}
+      {context.optimistic && (
+        <div className="grid items-start gap-6 md:grid-cols-[1.1fr_1fr]">
+          <div className="space-y-4">
+            <div className="flex items-baseline justify-between">
+              <h2 ref={heading} tabIndex={-1} className="text-xl font-semibold">
+                Расписание дня
+              </h2>
+              <span className="text-sm text-muted-foreground">Встреч: {meetings.length}</span>
+            </div>
+            {meetings.length === 0 ? (
+              <div className="rounded-xl border border-dashed p-8 text-center">
+                <p className="font-medium">На этот день бронирований нет</p>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  Можно выбрать любое свободное время в рабочих часах.
+                </p>
+              </div>
+            ) : (
+              <ul className="space-y-3">
+                {meetings.map((meeting) => {
+                  const future = isFutureMeeting(meeting, context.now);
+                  const pending =
+                    context.pending?.type !== "delete" &&
+                    context.pending?.meeting.id === meeting.id;
+                  return (
+                    <li key={meeting.id}>
+                      <article
+                        aria-label={meeting.title || "Встреча без названия"}
+                        className={`rounded-xl border p-4 ${context.editorId === meeting.id ? "border-foreground" : ""}`}
+                      >
+                        <div className="flex flex-wrap items-baseline justify-between gap-2">
+                          <p className="font-semibold tabular-nums">
+                            {formatMinute(meeting.start)}–{formatMinute(meeting.end)}
+                          </p>
+                          <span className="text-xs text-muted-foreground">
+                            {pending ? "Сохраняется…" : meetingStatus(meeting, context.now)}
+                          </span>
+                        </div>
+                        <h3 className="mt-2 break-words text-sm">
+                          {meeting.title || "Встреча без названия"}
+                        </h3>
+                        {future && (
+                          <div className="mt-4 flex flex-wrap gap-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              disabled={!creating}
+                              onClick={(event) => {
+                                restoreFocus.current = event.currentTarget;
+                                send({ type: "clock.changed", now: readClock() });
+                                send({ type: "meeting.edit.requested", meetingId: meeting.id });
+                              }}
+                            >
+                              Изменить
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              disabled={!creating}
+                              onClick={(event) => {
+                                restoreFocus.current = event.currentTarget;
+                                send({ type: "clock.changed", now: readClock() });
+                                send({ type: "meeting.delete.requested", meetingId: meeting.id });
+                              }}
+                            >
+                              Удалить
+                            </Button>
+                          </div>
+                        )}
+                      </article>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </div>
+          <Card>
+            <CardContent className="pt-6">
+              {editing && editor ? (
+                <MeetingEditorView
+                  key={context.editorId}
+                  actor={editor}
+                  disabled={!ready}
+                  onChange={(patch) => send({ type: "meeting.draft.changed", patch })}
+                  onSubmit={submit}
+                  onCancel={() => {
+                    send({ type: "meeting.edit.cancelled" });
+                    requestAnimationFrame(() => restoreFocus.current?.focus());
+                  }}
+                />
+              ) : (
+                <>
+                  {(pastDate || dayFinished) && (
+                    <p className="mb-4 text-sm text-muted-foreground">
+                      {pastDate
+                        ? "Прошедшая дата — доступен только просмотр."
+                        : "На сегодня больше нет времени для новой встречи."}
+                    </p>
+                  )}
+                  <MeetingForm
+                    draft={context.creationDraft}
+                    error={context.error}
+                    disabled={!creating || pastDate || dayFinished}
+                    onChange={(patch) => send({ type: "meeting.draft.changed", patch })}
+                    onSubmit={submit}
+                  />
+                </>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      )}
+      {snapshot.matches({ ready: "confirmingDelete" }) && (
+        <DeleteConfirmation
+          onCancel={() => send({ type: "meeting.delete.cancelled" })}
+          onConfirm={() => {
+            send({ type: "clock.changed", now: readClock() });
+            send({ type: "meeting.delete.confirmed" });
+          }}
+        />
+      )}
+      <footer className="space-y-3 border-t pt-5 text-xs text-muted-foreground">
+        <p>Демо: данные хранятся в памяти вкладки и сбрасываются при перезагрузке.</p>
+        <details>
+          <summary className="cursor-pointer">Проверить серверный конфликт</summary>
+          <div className="mt-3 space-y-2">
+            <p>Подготовьте конфликт и попробуйте создать встречу в свободное время.</p>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={!creating || armingDemo}
+              onClick={() => void armConflict()}
+            >
+              Смоделировать конфликт
+            </Button>
+            <p role="status">{demoMessage}</p>
+          </div>
+        </details>
+      </footer>
     </section>
   );
 }

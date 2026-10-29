@@ -12,6 +12,7 @@ export default defineConfig({
   reporter: process.env.CI ? "github" : "list",
   use: {
     baseURL: "http://localhost:3000",
+    timezoneId: "Europe/Minsk",
     trace: "on-first-retry",
   },
   webServer: {

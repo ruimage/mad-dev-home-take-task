@@ -1,4 +1,4 @@
-import { rmSync } from "node:fs";
+import { copyFileSync, rmSync } from "node:fs";
 import { resolve } from "node:path";
 import tailwindPlugin from "bun-plugin-tailwind";
 
@@ -17,6 +17,7 @@ const result = await Bun.build({
   outdir,
   target: "browser",
   minify: true,
+  define: { "process.env.NODE_ENV": '"production"' },
   // Splits lazy routes (TanStack Router `.lazy()`) into separate chunks.
   splitting: true,
   plugins: [tailwindPlugin],
@@ -33,4 +34,8 @@ if (!result.success) {
 for (const output of result.outputs) {
   console.log(`  ${output.kind.padEnd(8)} ./${output.path}`);
 }
+copyFileSync(
+  new URL("../public/mockServiceWorker.js", import.meta.url),
+  resolve(outdir, "mockServiceWorker.js"),
+);
 console.log("Build succeeded -> ./dist");

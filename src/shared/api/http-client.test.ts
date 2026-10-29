@@ -16,6 +16,11 @@ const server = setupServer(
     const body = (await request.json()) as { name: string };
     return HttpResponse.json({ id: 2, name: body.name });
   }),
+  http.patch(`${BASE_URL}/users/1`, () => HttpResponse.json({ id: 1 })),
+  http.delete(`${BASE_URL}/users/1`, () => new HttpResponse(null, { status: 204 })),
+  http.post(`${BASE_URL}/conflict`, () =>
+    HttpResponse.json({ code: "BOOKING_CONFLICT", message: "Time occupied" }, { status: 409 }),
+  ),
   http.get(`${BASE_URL}/invalid`, () => HttpResponse.json({ id: "not-a-number" })),
 );
 
@@ -24,6 +29,22 @@ afterEach(() => server.resetHandlers());
 afterAll(() => server.close());
 
 describe("FetchHttpClient (via MSW)", () => {
+  test("supports PATCH and DELETE with an empty 204 response", async () => {
+    const client = new FetchHttpClient({ baseUrl: BASE_URL });
+    expect(await client.patch("/users/1", {}, schema)).toEqual({ id: 1 });
+    await expect(client.delete("/users/1")).resolves.toBeUndefined();
+  });
+
+  test("preserves server conflict status, code and message", async () => {
+    const client = new FetchHttpClient({ baseUrl: BASE_URL });
+    const error = await client.post("/conflict", {}, schema).catch((value: unknown) => value);
+    expect(error).toBeInstanceOf(ApiError);
+    expect(error).toMatchObject({
+      status: 409,
+      code: "BOOKING_CONFLICT",
+      message: "Time occupied",
+    });
+  });
   test("parses validated responses", async () => {
     const client = new FetchHttpClient({ baseUrl: BASE_URL });
 

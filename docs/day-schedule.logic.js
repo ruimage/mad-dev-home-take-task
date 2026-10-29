@@ -70,26 +70,26 @@ export function createEditorContext() {
 }
 
 export const editorGuards = {
-  invalidInterval(context, event) {
+  invalidInterval(context, _event) {
     const { start, end } = context.draft;
     return (
       !Number.isInteger(start) || !Number.isInteger(end) || start < 0 || end > 1440 || start >= end
     );
   },
-  outsideWorkingTime(context, event) {
+  outsideWorkingTime(context, _event) {
     const { start, end } = context.schedule.workingTime;
     return context.draft.start < start || context.draft.end > end;
   },
-  intersectsMeeting(context, event) {
+  intersectsMeeting(context, _event) {
     return context.schedule.slots
       .slice(context.draft.start, context.draft.end)
       .some((id) => id !== null && id !== context.original.id);
   },
-  invalidDuration(context, event) {
+  invalidDuration(context, _event) {
     const duration = context.draft.end - context.draft.start;
     return duration < context.schedule.minSlotMinutes || duration > context.schedule.maxSlotMinutes;
   },
-  notFuture(context, event) {
+  notFuture(context, _event) {
     return (
       !future(context.original, context.now) ||
       !future({ ...context.original, ...context.draft }, context.now)
@@ -98,7 +98,7 @@ export const editorGuards = {
 };
 
 export const editorUpdates = {
-  openMeeting(context, event) {
+  openMeeting(_context, event) {
     return {
       original: { ...event.meeting },
       draft: {
@@ -119,7 +119,7 @@ export const editorUpdates = {
       operationError: null,
     };
   },
-  clearEditor(context, event) {
+  clearEditor(_context, _event) {
     return {
       original: null,
       draft: null,
@@ -128,25 +128,25 @@ export const editorUpdates = {
       operationError: null,
     };
   },
-  setIntervalError(context, event) {
+  setIntervalError(_context, _event) {
     return { validationError: "INVALID_INTERVAL" };
   },
-  setWorkingTimeError(context, event) {
+  setWorkingTimeError(_context, _event) {
     return { validationError: "OUTSIDE_WORKING_TIME" };
   },
-  setIntersectionError(context, event) {
+  setIntersectionError(_context, _event) {
     return { validationError: "TIME_OCCUPIED" };
   },
-  setDurationError(context, event) {
+  setDurationError(_context, _event) {
     return { validationError: "INVALID_DURATION" };
   },
-  setPastError(context, event) {
+  setPastError(_context, _event) {
     return { validationError: "PAST_TIME" };
   },
-  setConflict(context, event) {
+  setConflict(_context, _event) {
     return { operationError: { code: 409, message: "Time was booked by another user" } };
   },
-  setSaveError(context, event) {
+  setSaveError(_context, event) {
     return {
       operationError: {
         code: event.code ?? 500,
@@ -154,16 +154,16 @@ export const editorUpdates = {
       },
     };
   },
-  setClock(context, event) {
+  setClock(_context, event) {
     return { now: event.now };
   },
-  setSchedule(context, event) {
+  setSchedule(_context, event) {
     return { schedule: event.schedule };
   },
 };
 
 export const editorMessages = {
-  requestSave(context, event) {
+  requestSave(context, _event) {
     return {
       type: "editor.save.requested",
       meeting: {
@@ -174,7 +174,7 @@ export const editorMessages = {
       },
     };
   },
-  notifyCancelled(context, event) {
+  notifyCancelled(_context, _event) {
     return { type: "editor.closed" };
   },
 };
@@ -198,7 +198,7 @@ export function createScheduleContext() {
 }
 
 export const scheduleGuards = {
-  hasEditor(context, event) {
+  hasEditor(context, _event) {
     return context.editorMeetingId !== null;
   },
   canAcceptEditorSave(context, event) {
@@ -219,69 +219,69 @@ export const scheduleGuards = {
       isFuture(meeting.date, meeting.start, context.now)
     );
   },
-  invalidInterval(context, event) {
+  invalidInterval(context, _event) {
     const { start, end } = context.creationDraft;
     return (
       !Number.isInteger(start) || !Number.isInteger(end) || start < 0 || end > 1440 || start >= end
     );
   },
-  outsideWorkingTime(context, event) {
+  outsideWorkingTime(context, _event) {
     const { start, end } = context.optimisticSchedule.workingTime;
     return context.creationDraft.start < start || context.creationDraft.end > end;
   },
-  intersectsMeeting(context, event) {
+  intersectsMeeting(context, _event) {
     return !isAvailableTime(context);
   },
-  invalidDuration(context, event) {
+  invalidDuration(context, _event) {
     const duration = context.creationDraft.end - context.creationDraft.start;
     const schedule = context.optimisticSchedule;
     return duration < schedule.minSlotMinutes || duration > schedule.maxSlotMinutes;
   },
-  notFuture(context, event) {
+  notFuture(context, _event) {
     return !isFuture(context.selectedDate, context.creationDraft.start, context.now);
   },
   canEdit(context, event) {
     const meeting = context.confirmedSchedule.meetingsById[event.meetingId];
     return Boolean(meeting && isFuture(meeting.date, meeting.start, context.now));
   },
-  canDeleteSelected(context, event) {
+  canDeleteSelected(context, _event) {
     const meeting = context.confirmedSchedule.meetingsById[context.deleteId];
     return Boolean(meeting && isFuture(meeting.date, meeting.start, context.now));
   },
 };
 
 export const scheduleUpdates = {
-  clearEditorMeeting(context, event) {
+  clearEditorMeeting(_context, _event) {
     return { editorMeetingId: null };
   },
-  selectEditorMeeting(context, event) {
+  selectEditorMeeting(_context, event) {
     return { editorMeetingId: event.meetingId };
   },
-  setClock(context, event) {
+  setClock(_context, event) {
     return { now: event.now };
   },
-  clearLoadError(context, event) {
+  clearLoadError(_context, _event) {
     return { loadError: null };
   },
-  setLoadError(context, event) {
+  setLoadError(_context, event) {
     return { loadError: event.message ?? "Could not load day" };
   },
-  setIntervalError(context, event) {
+  setIntervalError(_context, _event) {
     return { validationError: "INVALID_INTERVAL" };
   },
-  setWorkingTimeError(context, event) {
+  setWorkingTimeError(_context, _event) {
     return { validationError: "OUTSIDE_WORKING_TIME" };
   },
-  setIntersectionError(context, event) {
+  setIntersectionError(_context, _event) {
     return { validationError: "TIME_OCCUPIED" };
   },
-  setDurationError(context, event) {
+  setDurationError(_context, _event) {
     return { validationError: "INVALID_DURATION" };
   },
-  setPastError(context, event) {
+  setPastError(_context, _event) {
     return { validationError: "PAST_TIME" };
   },
-  setReadonlyError(context, event) {
+  setReadonlyError(_context, _event) {
     return { validationError: "MEETING_READONLY_OR_MISSING" };
   },
   changeDraft(context, event) {
@@ -291,7 +291,7 @@ export const scheduleUpdates = {
       operationError: null,
     };
   },
-  resetDraft(context, event) {
+  resetDraft(_context, _event) {
     return {
       creationDraft: blankDraft(),
       editorMeetingId: null,
@@ -299,13 +299,13 @@ export const scheduleUpdates = {
       operationError: null,
     };
   },
-  selectForDeletion(context, event) {
+  selectForDeletion(_context, event) {
     return { deleteId: event.meetingId };
   },
-  cancelDeletion(context, event) {
+  cancelDeletion(_context, _event) {
     return { deleteId: null };
   },
-  selectDate(context, event) {
+  selectDate(_context, event) {
     return {
       selectedDate: event.date,
       confirmedSchedule: null,
@@ -326,7 +326,7 @@ export const scheduleUpdates = {
       : seed(context.selectedDate);
     return { confirmedSchedule: schedule, optimisticSchedule: schedule, loadError: null };
   },
-  applyOptimisticSave(context, event) {
+  applyOptimisticSave(context, _event) {
     const sequence = context.sequence + 1;
     const meeting = {
       ...context.creationDraft,
@@ -355,7 +355,7 @@ export const scheduleUpdates = {
       refreshReason: null,
     };
   },
-  applyOptimisticDelete(context, event) {
+  applyOptimisticDelete(context, _event) {
     const sequence = context.sequence + 1;
     const operation = { type: "delete", meetingId: context.deleteId, sequence };
     return {
@@ -375,7 +375,7 @@ export const scheduleUpdates = {
         ? undefined
         : {
             ...operation.meeting,
-            ...(event.meeting ?? {}),
+            ...event.meeting,
             id:
               event.meeting?.id ??
               (operation.type === "create" ? `server-${operation.sequence}` : operation.meeting.id),
@@ -391,7 +391,7 @@ export const scheduleUpdates = {
       operationError: null,
     };
   },
-  rollbackConflict(context, event) {
+  rollbackConflict(context, _event) {
     return {
       optimisticSchedule: context.confirmedSchedule,
       pendingOperation: null,
@@ -415,48 +415,48 @@ export const scheduleUpdates = {
 };
 
 export const scheduleMessages = {
-  forwardClock(context, event) {
+  forwardClock(_context, event) {
     return event;
   },
-  forwardDraft(context, event) {
+  forwardDraft(_context, event) {
     return event;
   },
-  forwardSave(context, event) {
+  forwardSave(_context, _event) {
     return { type: "meeting.save.requested" };
   },
-  cancelEditor(context, event) {
+  cancelEditor(_context, _event) {
     return { type: "meeting.edit.cancelled" };
   },
-  resetEditor(context, event) {
+  resetEditor(_context, _event) {
     return { type: "editor.reset.requested" };
   },
-  notifyEditorSuccess(context, event) {
+  notifyEditorSuccess(_context, _event) {
     return { type: "editor.save.succeeded" };
   },
-  notifyEditorConflict(context, event) {
+  notifyEditorConflict(_context, _event) {
     return { type: "editor.save.conflicted" };
   },
-  notifyEditorFailure(context, event) {
+  notifyEditorFailure(_context, event) {
     return {
       type: "editor.save.failed",
       code: event.code,
       message: event.message,
     };
   },
-  rejectEditorSave(context, event) {
+  rejectEditorSave(_context, _event) {
     return {
       type: "editor.save.rejected",
       code: 400,
       message: "Schedule changed or operation is not allowed",
     };
   },
-  syncEditorSchedule(context, event) {
+  syncEditorSchedule(context, _event) {
     return {
       type: "schedule.changed",
       schedule: context.confirmedSchedule,
     };
   },
-  openEditor(context, event) {
+  openEditor(context, _event) {
     return {
       type: "editor.open.requested",
       meeting: context.confirmedSchedule.meetingsById[context.editorMeetingId],

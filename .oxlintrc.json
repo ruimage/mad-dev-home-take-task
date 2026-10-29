@@ -11,5 +11,13 @@
   "rules": {
     "react/react-in-jsx-scope": "off"
   },
-  "ignorePatterns": ["dist", "playwright/.cache", "playwright-report", "test-results", "coverage"]
+  "ignorePatterns": [
+    "dist",
+    "playwright/.cache",
+    "playwright-report",
+    "test-results",
+    "coverage",
+    "public/mockServiceWorker.js",
+    "docs/day-schedule.simulator.js"
+  ]
 }

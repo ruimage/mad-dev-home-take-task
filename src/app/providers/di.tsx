@@ -1,5 +1,8 @@
 import { useMemo, type ReactNode } from "react";
-import { FetchHttpClient, HTTP_CLIENT } from "@/shared/api";
+import { z } from "zod";
+import { ScheduleService, SCHEDULE_SERVICE } from "@/entities/day-schedule";
+import { MeetingService } from "@/entities/meeting";
+import { DEMO_API, FetchHttpClient, HTTP_CLIENT } from "@/shared/api";
 import { ContainerProvider, ServiceContainer } from "@/shared/lib/di";
 import { QueryStore, QueryStoreProvider } from "@/shared/lib/query";
 
@@ -8,7 +11,7 @@ import { QueryStore, QueryStoreProvider } from "@/shared/lib/query";
  * Swap `FetchHttpClient` for another `HttpClient` implementation
  * (mock transport, different base url) in one place.
  */
-const API_BASE_URL = "https://jsonplaceholder.typicode.com";
+const API_BASE_URL = "";
 
 interface AppServices {
   container: ServiceContainer;
@@ -21,6 +24,12 @@ function createAppServices(): AppServices {
 
   const httpClient = new FetchHttpClient({ baseUrl: API_BASE_URL });
   container.register(HTTP_CLIENT, httpClient);
+  container.register(SCHEDULE_SERVICE, new ScheduleService(new MeetingService(httpClient)));
+  container.register(DEMO_API, {
+    armConflict: async () => {
+      await httpClient.post("/api/demo/conflict", {}, z.object({ armed: z.boolean() }));
+    },
+  });
   // Register domain services wrapped in the query-tracking proxy, e.g.:
   //   container.register(
   //     MY_SERVICE,
