@@ -1,13 +1,14 @@
 import { useEffect, useRef, useState } from "react";
 import { useMachine } from "@xstate/react";
 import { SCHEDULE_SERVICE } from "@/entities/day-schedule";
-import { dateSchema, isFutureMeeting, meetingStatus } from "@/entities/meeting";
+import { dateSchema } from "@/entities/meeting";
 import { MeetingEditorView, MeetingForm, errorMessage } from "@/features/meeting-editor";
 import { DEMO_API } from "@/shared/api";
-import { formatMinute, readClock } from "@/shared/lib/date-time";
+import { readClock } from "@/shared/lib/date-time";
 import { useService } from "@/shared/lib/di";
 import { inspectStateMachines } from "@/shared/lib/state-inspection";
 import { Button, Card, CardContent, Input } from "@/shared/ui";
+import { DayScheduleGrid } from "@/widgets/day-schedule";
 import { dayScheduleMachine } from "../model/schedule.machine";
 
 function DeleteConfirmation({ onCancel, onConfirm }: { onCancel(): void; onConfirm(): void }) {
@@ -71,7 +72,7 @@ export function HomePage() {
   const wasBusy = useRef(false);
   useEffect(() => {
     const update = () => send({ type: "clock.changed", now: readClock() });
-    const timer = window.setInterval(update, 30_000);
+    const timer = window.setInterval(update, 1_000);
     window.addEventListener("focus", update);
     return () => {
       window.clearInterval(timer);
@@ -165,71 +166,27 @@ export function HomePage() {
               </h2>
               <span className="text-sm text-muted-foreground">Встреч: {meetings.length}</span>
             </div>
-            {meetings.length === 0 ? (
-              <div className="rounded-xl border border-dashed p-8 text-center">
-                <p className="font-medium">На этот день бронирований нет</p>
-                <p className="mt-2 text-sm text-muted-foreground">
-                  Можно выбрать любое свободное время в рабочих часах.
-                </p>
-              </div>
-            ) : (
-              <ul className="space-y-3">
-                {meetings.map((meeting) => {
-                  const future = isFutureMeeting(meeting, context.now);
-                  const pending =
-                    context.pending?.type !== "delete" &&
-                    context.pending?.meeting.id === meeting.id;
-                  return (
-                    <li key={meeting.id}>
-                      <article
-                        aria-label={meeting.title || "Встреча без названия"}
-                        className={`rounded-xl border p-4 ${context.editorId === meeting.id ? "border-foreground" : ""}`}
-                      >
-                        <div className="flex flex-wrap items-baseline justify-between gap-2">
-                          <p className="font-semibold tabular-nums">
-                            {formatMinute(meeting.start)}–{formatMinute(meeting.end)}
-                          </p>
-                          <span className="text-xs text-muted-foreground">
-                            {pending ? "Сохраняется…" : meetingStatus(meeting, context.now)}
-                          </span>
-                        </div>
-                        <h3 className="mt-2 break-words text-sm">
-                          {meeting.title || "Встреча без названия"}
-                        </h3>
-                        {future && (
-                          <div className="mt-4 flex flex-wrap gap-2">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              disabled={!creating}
-                              onClick={(event) => {
-                                restoreFocus.current = event.currentTarget;
-                                send({ type: "clock.changed", now: readClock() });
-                                send({ type: "meeting.edit.requested", meetingId: meeting.id });
-                              }}
-                            >
-                              Изменить
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              disabled={!creating}
-                              onClick={(event) => {
-                                restoreFocus.current = event.currentTarget;
-                                send({ type: "clock.changed", now: readClock() });
-                                send({ type: "meeting.delete.requested", meetingId: meeting.id });
-                              }}
-                            >
-                              Удалить
-                            </Button>
-                          </div>
-                        )}
-                      </article>
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
+            <DayScheduleGrid
+              schedule={context.optimistic}
+              now={context.now}
+              selectedId={context.editorId}
+              pendingId={
+                context.pending && context.pending.type !== "delete"
+                  ? context.pending.meeting.id
+                  : null
+              }
+              canManage={creating}
+              onEdit={(meetingId, trigger) => {
+                restoreFocus.current = trigger;
+                send({ type: "clock.changed", now: readClock() });
+                send({ type: "meeting.edit.requested", meetingId });
+              }}
+              onDelete={(meetingId, trigger) => {
+                restoreFocus.current = trigger;
+                send({ type: "clock.changed", now: readClock() });
+                send({ type: "meeting.delete.requested", meetingId });
+              }}
+            />
           </div>
           <Card>
             <CardContent className="pt-6">
