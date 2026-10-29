@@ -5,10 +5,33 @@ import {
   meetingGridLayout,
   SLOT_HEIGHT,
   timeTicks,
+  buildScheduleRows,
 } from "./grid-layout";
 
 const settings = { workingTime: { start: 540, end: 1080 }, minSlotMinutes: 30 };
 const meeting = (start: number, end: number) => ({ id: "A", date: "2030-01-15", start, end });
+
+test("empty schedules still render all rows and their template", () => {
+  const grid = buildScheduleRows([], settings);
+  expect(grid.meetingCount).toBe(0);
+  expect(grid.rows).toHaveLength(18);
+  expect(grid.rows.every((row) => row.meetings.length === 0)).toBe(true);
+  expect(grid.templateRows).toBe(Array(18).fill("96px").join(" "));
+});
+
+test("row grouping preserves input order, exact offsets and the last interval", () => {
+  const meetings = Object.freeze([
+    Object.freeze({ ...meeting(607, 637), id: "A" }),
+    Object.freeze({ ...meeting(601, 631), id: "B" }),
+    Object.freeze({ ...meeting(1050, 1080), id: "C" }),
+  ]);
+  const grid = buildScheduleRows(meetings, settings);
+  expect(grid.meetingCount).toBe(3);
+  expect(grid.rows[2]?.meetings.map((item) => item.meeting.id)).toEqual(["A", "B"]);
+  expect(grid.rows[2]?.meetings[0]?.layout.translateY).toBeCloseTo(22.4);
+  expect(grid.rows.at(-1)?.meetings[0]?.meeting.id).toBe("C");
+  expect(meetings.map((item) => item.id)).toEqual(["A", "B", "C"]);
+});
 
 test("current time position includes seconds without rounding to slots", () => {
   expect(

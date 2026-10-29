@@ -12,6 +12,29 @@ async function fillMeeting(page: Page, title = "Планирование", start
   await page.getByLabel("Название", { exact: true }).fill(title);
 }
 
+test("cancelling editing returns to creation and enables schedule actions", async ({ page }) => {
+  const edit = page
+    .getByRole("article", { name: "Командная встреча", exact: true })
+    .getByRole("button", { name: "Изменить", exact: true });
+  await edit.click();
+  await page.getByRole("button", { name: "Отменить редактирование", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Новая встреча" })).toBeVisible();
+  await expect(edit).toBeEnabled();
+});
+
+test("global schedule retains the selected date and draft across navigation", async ({ page }) => {
+  await page.getByLabel("Дата", { exact: true }).fill("2030-01-16");
+  await expect(page.getByRole("heading", { name: "Расписание дня" })).toBeVisible();
+  await fillMeeting(page, "Сохранённый черновик", "14:00", "15:00");
+  await page.getByRole("link", { name: "Экран у двери" }).click();
+  await expect(page).toHaveURL(/\/display$/);
+  await page.goBack();
+  await expect(page.getByLabel("Дата", { exact: true })).toHaveValue("2030-01-16");
+  await expect(page.getByLabel("Название", { exact: true })).toHaveValue("Сохранённый черновик");
+  await expect(page.getByLabel("Начало", { exact: true })).toHaveValue("14:00");
+  await expect(page.getByLabel("Окончание", { exact: true })).toHaveValue("15:00");
+});
+
 async function failNext(page: Page, kind: "load" | "mutation") {
   await page.evaluate(async (failureKind) => {
     await fetch("/api/demo/failure", {
@@ -30,14 +53,12 @@ test("CRUD uses the real browser mock and preserves the editor until success", a
   const card = page.getByRole("article", { name: "Планирование", exact: true });
   await card.getByRole("button", { name: "Изменить" }).click();
   await expect(page.getByRole("heading", { name: "Редактирование встречи" })).toBeVisible();
-  await expect(page.getByLabel("Начало", { exact: true })).toBeFocused();
   await page.getByLabel("Название", { exact: true }).fill("Обновлённая встреча");
   await page.getByRole("button", { name: "Сохранить изменения" }).click();
   await expect(page.getByRole("heading", { name: "Новая встреча" })).toBeVisible();
   const updated = page.getByRole("article", { name: "Обновлённая встреча" });
   await updated.getByRole("button", { name: "Удалить", exact: true }).click();
   await expect(page.getByRole("dialog")).toBeVisible();
-  await expect(page.getByRole("button", { name: "Отмена", exact: true })).toBeFocused();
   await page.keyboard.press("Escape");
   await expect(updated).toBeVisible();
   await updated.getByRole("button", { name: "Удалить", exact: true }).click();

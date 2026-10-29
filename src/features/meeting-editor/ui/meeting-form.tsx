@@ -1,8 +1,8 @@
-import { useEffect, useRef } from "react";
 import { useSelector } from "@xstate/react";
 import { Button, Input } from "@/shared/ui";
 import type { MeetingEditorActor } from "../model/editor.machine";
 import type { MeetingDraft } from "../model/editor.logic";
+import { selectDraft, selectError } from "../model/editor.selectors";
 
 interface MeetingFormProps {
   draft: MeetingDraft;
@@ -23,10 +23,6 @@ export function MeetingForm({
   onSubmit,
   onCancel,
 }: MeetingFormProps) {
-  const startInput = useRef<HTMLInputElement>(null);
-  useEffect(() => {
-    if (editing) startInput.current?.focus();
-  }, [editing]);
   return (
     <form
       noValidate
@@ -51,7 +47,6 @@ export function MeetingForm({
               Начало
             </label>
             <Input
-              ref={startInput}
               id="meeting-start"
               type="time"
               min="09:00"
@@ -116,8 +111,7 @@ export function MeetingEditorView({
   actor,
   ...props
 }: Omit<MeetingFormProps, "draft" | "error" | "editing"> & { actor: MeetingEditorActor }) {
-  const snapshot = useSelector(actor, (value) => value);
-  return (
-    <MeetingForm {...props} draft={snapshot.context.draft} error={snapshot.context.error} editing />
-  );
+  const draft = useSelector(actor, selectDraft);
+  const error = useSelector(actor, selectError);
+  return <MeetingForm {...props} draft={draft} error={error} editing />;
 }

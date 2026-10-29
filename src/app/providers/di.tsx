@@ -5,6 +5,7 @@ import { MeetingService } from "@/entities/meeting";
 import { DEMO_API, FetchHttpClient, HTTP_CLIENT } from "@/shared/api";
 import { ContainerProvider, ServiceContainer } from "@/shared/lib/di";
 import { QueryStore, QueryStoreProvider } from "@/shared/lib/query";
+import { ScheduleProvider } from "@/widgets/day-schedule";
 
 /**
  * Composition root of the app: every external source is wired here.
@@ -45,7 +46,9 @@ export function AppProviders({ children }: { children: ReactNode }) {
 
   return (
     <ContainerProvider container={container}>
-      <QueryStoreProvider store={queryStore}>{children}</QueryStoreProvider>
+      <QueryStoreProvider store={queryStore}>
+        <ScheduleProvider>{children}</ScheduleProvider>
+      </QueryStoreProvider>
     </ContainerProvider>
   );
 }

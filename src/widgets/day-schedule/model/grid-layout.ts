@@ -4,7 +4,7 @@ import type { ClockTime } from "@/shared/lib/date-time";
 
 /** A minimum-duration row has enough room for the meeting's title and controls. */
 export const SLOT_HEIGHT = 96;
-type GridSettings = Pick<DayScheduleData, "workingTime" | "minSlotMinutes">;
+export type GridSettings = Pick<DayScheduleData, "workingTime" | "minSlotMinutes">;
 
 export function currentTimeOffset(
   date: string,
@@ -57,4 +57,20 @@ export function timeTicks(settings: GridSettings) {
       kind: minute % 60 === 0 ? "hour" : minute % 30 === 0 ? "half" : "quarter",
     };
   });
+}
+
+export function buildScheduleRows(meetings: readonly Meeting[], settings: GridSettings) {
+  const rows = gridRows(settings).map((row) => ({
+    ...row,
+    meetings: [] as { meeting: Meeting; layout: ReturnType<typeof meetingGridLayout> }[],
+  }));
+  for (const meeting of meetings) {
+    const layout = meetingGridLayout(meeting, settings);
+    rows[layout.anchorIndex]?.meetings.push({ meeting, layout });
+  }
+  return {
+    rows,
+    templateRows: rows.map((row) => `${row.height}px`).join(" "),
+    meetingCount: meetings.length,
+  };
 }

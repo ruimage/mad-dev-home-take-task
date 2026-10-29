@@ -12,6 +12,7 @@ SESSION_ID = "01a186f9-adb9-7f93-ae71-0bc99f2441e6"
 DEFAULT_OUTPUT = Path(__file__).with_name(f"2026-10-29-{SESSION_ID}.md")
 MINSK = timezone(timedelta(hours=3), "Europe/Minsk")
 TECHNICAL_PREFIXES = (
+    "# AGENTS.md instructions",
     "<environment_context>",
     "<external_codex_apps_open_page>",
     "<permissions instructions>",
@@ -134,6 +135,8 @@ def main():
     parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
     args = parser.parse_args()
     source = args.source
+    if source is not None and args.output == DEFAULT_OUTPUT and SESSION_ID not in source.name:
+        parser.error("Pass a separate --output when exporting another chat")
     if source is None:
         directory = Path.home() / ".codex" / "sessions" / "2026" / "10" / "29"
         candidates = list(directory.glob(f"*{SESSION_ID}*.jsonl"))

@@ -56,7 +56,6 @@ export function connectStatelyInspector(): void {
 export function openStatelyInspector(): boolean {
   if (!inspector) return false;
   const existingWindow = inspector.adapter.targetWindow;
-  if (existingWindow && !existingWindow.closed) existingWindow.focus();
-  else inspector.start();
+  if (!existingWindow || existingWindow.closed) inspector.start();
   return inspector.adapter.targetWindow !== null;
 }
